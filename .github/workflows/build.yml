@@ -36,16 +36,7 @@ jobs:
           unzip -q cmdline.zip
           mv cmdline-tools latest
           yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-
-      - name: Generate Signing Key
-        run: |
-          keytool -genkeypair -v \
-            -keystore android.keystore \
-            -alias familia-cerca \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass familia123 -keypass familia123 \
-            -dname "CN=Familia Cerca, OU=Family, O=Familia Cerca, L=City, S=State, C=CU"
+          yes | $HOME/android-sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Configure Bubblewrap
         run: |
@@ -56,18 +47,37 @@ jobs:
             "androidSdkPath": "${HOME}/android-sdk"
           }
           EOF
-          cat $HOME/.bubblewrap/config.json
+
+      - name: Generate Signing Key
+        run: |
+          keytool -genkeypair -v \
+            -keystore android.keystore \
+            -alias familia-cerca \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass familia123 -keypass familia123 \
+            -dname "CN=Familia Cerca, OU=Family, O=Familia Cerca, L=City, S=State, C=CU"
+
+      - name: Init Bubblewrap
+        run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+          yes | bubblewrap init --manifest twa-manifest.json || true
+          ls -la
 
       - name: Build APK
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
           yes | bubblewrap build --skipPwaValidation || true
-          ls -la *.apk || echo "No APK found"
+          echo "=== Archivos APK encontrados ==="
+          find . -name "*.apk" -type f
+          echo "=== Fin de búsqueda ==="
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: familia-cerca-apk
-          path: ./*.apk
-          if-no-files-found: warn
+          path: |
+            **/*.apk
+            **/*.aab
+          if-no-files-found: warn      
