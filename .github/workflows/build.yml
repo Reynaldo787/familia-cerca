@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -62,22 +65,37 @@ jobs:
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
           yes | bubblewrap init --manifest twa-manifest.json || true
-          ls -la
 
       - name: Build APK
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
           yes | bubblewrap build --skipPwaValidation || true
-          echo "=== Archivos APK encontrados ==="
+          echo "=== Buscando APK ==="
           find . -name "*.apk" -type f
-          echo "=== Fin de búsqueda ==="
 
-      - name: Upload APK
+      - name: Prepare APK
+        run: |
+          mkdir -p output
+          find . -name "*.apk" -type f -exec cp {} output/familia-cerca.apk \; || true
+          ls -la output/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: "Familia Cerca v1.0.${{ github.run_number }}"
+          body: |
+            📱 APK de Familia Cerca lista para instalar.
+
+            Descarga el archivo `familia-cerca.apk` y ábrelo en tu teléfono Android.
+          files: output/familia-cerca.apk
+          draft: false
+          prerelease: false
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: familia-cerca-apk
-          path: |
-            **/*.apk
-            **/*.aab
-          if-no-files-found: warn      
+          path: output/*.apk
+          if-no-files-found: warn
